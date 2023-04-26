@@ -80,10 +80,21 @@ def get_selectred_fband_info(values: dict, get_all_bands: bool = True):
 
 def slider_btn(turn_on: bool, key:str):
     img = toggle_btn_on if turn_on else toggle_btn_off
-    return sg.Button(image_data=img, key=f"-TOGGLE_{key}", button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, metadata=False, pad=(0, 0), size=(0.5,0.5), image_subsample=3)
+    return sg.Button(image_data=img, key=f"-TOGGLE_{key}", button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, metadata=False, pad=(0, 0), size=(1,1), image_subsample=3)
 
 def get_input(text):
     return sg.Input(text, size=(5))
+
+def get_sw_feature_layout(estimator_list:list, list_sw_features: list):
+
+    header =  [[sg.Text("", s=(14,1), font=("Helvetica", 10), pad=(0, (0, 0)))] + [sg.Text(h, s=(5,1), pad=(0, (0, 0)), font=("Helvetica", 10)) for h in estimator_list]]
+
+    def add_row(feature_name:str, num_cols: int):
+        return [sg.Text(feature_name, s=(14,1), font=("Helvetica", 10), pad=(0, (0, 0)))] + [sg.Checkbox('', size=(2,), pad=(0, (0, 0)), default=False, k=f"-sharpwave_feature_{feature_name}_estimator_{col_estimator}") for _, col_estimator in enumerate(range(num_cols))]
+
+    layout = header + [add_row(f, len(estimator_list)) for f in list_sw_features]
+    return layout
+
 
 layout_normalization_raw = [[sg.T("normalization_time_s"), sg.Push(), get_input(s["raw_normalization_settings"]["normalization_time_s"])],
          [sg.T("clip"), sg.Push(), get_input(s["raw_normalization_settings"]["clip"])],
@@ -116,6 +127,8 @@ layout_bursts_fbands = [
     [sg.Col([add_fband_row_burst(fb, fb_idx, True if fb in s["burst_settings"]["frequency_bands"] else False) for fb_idx, fb in enumerate(list(s["frequency_ranges_hz"].keys()))],
             k="-TRACK_FBAND_BURSTS-", expand_x=True)]
 ]
+
+layout_sw_est = get_sw_feature_layout(list(s["sharpwave_analysis_settings"]["estimator"].keys()), list(s["sharpwave_analysis_settings"]["sharpwave_features"].keys()))
 
 layout_settings = [
     [sg.Frame("",
@@ -186,22 +199,22 @@ layout_settings = [
         ], expand_x=True, font="bold"
     )],
     [sg.Frame("sharpwave_analysis_settings",
-        [[sg.T("threshold"), sg.Push(), get_input(s["burst_settings"]["threshold"])],
-         [sg.T("time_duration_s"), sg.Push(), get_input(s["burst_settings"]["time_duration_s"])],
-         [sg.Frame("sharpwave_features", 
+        [[sg.Frame("sharpwave_features", 
             [[sg.T(sw_f), sg.Push(), slider_btn(f"sharpwave_analysis_settings-sharpwave_features-{sw_f}", s["sharpwave_analysis_settings"]["sharpwave_features"][sw_f])] for sw_f in list(s["sharpwave_analysis_settings"]["sharpwave_features"].keys())
             ], expand_x=True)],
          [sg.Frame("Filter specification",
                    layout_filter_sw, expand_x=True, key=""
-        )]]
-        #[sg.Frame("Detection parameters",
-        #    [[sg.TabGroup(
-        #    [[sg.Tab("Peaks", layout_sw_peaks), sg.Tab("Troughs", layout_sw_troughs, expand_x=True)]],
-        #    expand_x=True, expand_y=True)]], expand_x=True)],
-        #[sg.Frame("Estimators",
-        #          [[for ]]
-        #          expand_x=True)],
-        #], expand_x=True, font="bold"
+        )],
+        [sg.Frame("Detection parameters",
+            [[sg.TabGroup(
+            [[sg.Tab("Peaks", layout_sw_peaks), sg.Tab("Troughs", layout_sw_troughs, expand_x=True)]],
+            expand_x=True, expand_y=True)],
+            [sg.T("Apply estimator between peaks and troughs: "), sg.Push(), slider_btn(s["sharpwave_analysis_settings"]["apply_estimator_between_peaks_and_troughs"], "sharpwave-apply_estimator_between_peak_and_troughs")]
+            ], expand_x=True)],
+        [sg.T("")],
+        [sg.Frame("Estimators", layout_sw_est, expand_x=True, pad=(0,0))],
+        ], expand_x=True, font="bold"
+
     )],
 
 ]
